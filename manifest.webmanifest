@@ -1,0 +1,15 @@
+{
+  "name": "BÜTÇEM Telefon",
+  "short_name": "BÜTÇEM",
+  "description": "Gider, gelir ve transferleri telefondan BÜTÇEM'e gönderir.",
+  "lang": "tr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0D1117",
+  "theme_color": "#0D1117",
+  "icons": [
+    { "src": "simge-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "simge-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

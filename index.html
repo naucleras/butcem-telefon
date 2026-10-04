@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0D1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BÜTÇEM">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="simge-180.png">
+<title>BÜTÇEM</title>
+<!--
+  BÜTÇEM Telefon — Sürüm 1 — 04.10.2026
+  Gider / gelir / transfer kaydı. Kayıt önce telefona yazılır, internet varsa
+  hemen Google köprüsüne gönderilir; yoksa bekler ve bağlantı gelince gönderilir.
+  Bu dosyada hiçbir kişisel veri ya da anahtar YOKTUR; anahtar yalnız telefonda saklanır.
+-->
+<style>
+  :root {
+    --bg:#0D1117; --panel:#161B22; --panel2:#1C2333; --card:#21262D; --border:#30363D;
+    --text:#E6EDF3; --sub:#8B949E; --muted:#484F58;
+    --cyan:#00D9FF; --green:#3DFF91; --red:#FF4444; --orange:#FF9500; --gold:#FFD700;
+    --blue:#1F6FEB; --ok:#238636;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { padding: calc(env(safe-area-inset-top) + 8px) 14px calc(env(safe-area-inset-bottom) + 24px); }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  header h1 { font-size: 20px; margin: 0; color: var(--cyan); letter-spacing: .5px; flex: 1; }
+  .rozet { font-size: 12px; padding: 4px 9px; border-radius: 999px; background: var(--card);
+    border: 1px solid var(--border); color: var(--sub); white-space: nowrap; }
+  .rozet.cevrimici { color: var(--green); border-color: #1f5132; }
+  .rozet.cevrimdisi { color: var(--orange); border-color: #6b4304; }
+  .rozet.bekliyor { color: var(--gold); border-color: #6b5a04; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .simge-btn { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    width: 40px; height: 40px; font-size: 18px; }
+
+  .sekmeler { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 4px; gap: 4px; margin-bottom: 14px; }
+  .sekmeler button { border: 0; background: transparent; padding: 10px 0; border-radius: 9px;
+    font-weight: 600; color: var(--sub); }
+  .sekmeler button.secili[data-tur="gider"] { background: #3a1416; color: #ff8a8a; }
+  .sekmeler button.secili[data-tur="gelir"] { background: #123222; color: var(--green); }
+  .sekmeler button.secili[data-tur="transfer"] { background: #0d2a4a; color: #8cc4ff; }
+
+  .kart { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  label { display: block; font-size: 13px; color: var(--sub); margin: 12px 0 5px; }
+  label:first-child { margin-top: 0; }
+  input, select { width: 100%; font: inherit; color: var(--text); background: var(--card);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px; outline: none;
+    -webkit-appearance: none; appearance: none; }
+  select { background-image: linear-gradient(45deg, transparent 50%, var(--sub) 50%),
+    linear-gradient(135deg, var(--sub) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 52%, calc(100% - 13px) 52%;
+    background-size: 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
+  input:focus, select:focus { border-color: var(--cyan); }
+  #tutar { font-size: 26px; font-weight: 700; text-align: right; }
+  .tutar-onizleme { text-align: right; font-size: 13px; color: var(--sub); min-height: 18px; margin-top: 4px; }
+  .tutar-onizleme.hatali { color: var(--red); }
+  .iki { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gizli { display: none !important; }
+  .kaydet { width: 100%; margin-top: 16px; padding: 15px; border: 0; border-radius: 12px;
+    background: var(--ok); color: #fff; font-size: 17px; font-weight: 700; }
+  .kaydet:active { filter: brightness(1.15); }
+  .ikincil { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font-size: 14px; }
+
+  h2 { font-size: 14px; color: var(--sub); margin: 22px 0 8px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px; }
+  h2 .ek { margin-left: auto; }
+  .liste { display: flex; flex-direction: column; gap: 8px; }
+  .satir { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 12px; display: flex; gap: 10px; align-items: center; }
+  .satir .bilgi { flex: 1; min-width: 0; }
+  .satir .ust { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+  .satir .alt { font-size: 12px; color: var(--sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .satir .hata { font-size: 12px; color: var(--red); }
+  .satir.hatali { border-color: #6b1d1d; }
+  .t-gider { color: #ff8a8a; } .t-gelir { color: var(--green); } .t-transfer { color: #8cc4ff; }
+  .sil { background: transparent; border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 9px; color: var(--sub); font-size: 13px; }
+  details summary { cursor: pointer; color: var(--sub); font-size: 14px; margin: 22px 0 8px; }
+  .bos { color: var(--muted); font-size: 13px; padding: 4px 2px; }
+
+  #bildirim { position: fixed; left: 14px; right: 14px; bottom: calc(env(safe-area-inset-bottom) + 18px);
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px;
+    font-size: 15px; box-shadow: 0 6px 24px rgba(0,0,0,.5); transform: translateY(150%);
+    transition: transform .25s; z-index: 20; }
+  #bildirim.goster { transform: none; }
+  #bildirim.iyi { border-color: #1f5132; } #bildirim.kotu { border-color: #6b1d1d; }
+
+  #ayarlar { position: fixed; inset: 0; background: var(--bg); z-index: 10; overflow-y: auto;
+    padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 24px); }
+  .not { font-size: 13px; color: var(--sub); margin-top: 10px; }
+  .durum-satiri { font-size: 14px; margin-top: 12px; min-height: 20px; }
+  .durum-satiri.iyi { color: var(--green); } .durum-satiri.kotu { color: var(--red); }
+  .yan-yana { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .yan-yana .ikincil { flex: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>BÜTÇEM</h1>
+  <span id="rozetBaglanti" class="rozet">…</span>
+  <span id="rozetBekleyen" class="rozet bekliyor gizli">0 bekliyor</span>
+  <button class="simge-btn" id="ayarAc" aria-label="Ayarlar">⚙︎</button>
+</header>
+
+<div class="sekmeler" role="tablist">
+  <button data-tur="gider" class="secili">Gider</button>
+  <button data-tur="gelir">Gelir</button>
+  <button data-tur="transfer">Transfer</button>
+</div>
+
+<div class="kart">
+  <label for="tutar">Tutar</label>
+  <input id="tutar" inputmode="decimal" autocomplete="off" placeholder="0,00">
+  <div id="tutarOnizleme" class="tutar-onizleme"></div>
+
+  <label for="hesap" id="hesapEtiket">Hangi hesaptan</label>
+  <select id="hesap"></select>
+  <input id="hesapYazi" class="gizli" list="hesapOnerileri" autocomplete="off" placeholder="Hesap adı (BÜTÇEM'deki gibi)">
+
+  <div id="hedefAlan" class="gizli">
+    <label for="hedef">Nereye</label>
+    <select id="hedef"></select>
+    <input id="hedefYazi" class="gizli" list="hesapOnerileri" autocomplete="off" placeholder="Hesap adı (BÜTÇEM'deki gibi)">
+  </div>
+
+  <div id="kategoriAlan">
+    <label for="kategori">Kategori</label>
+    <select id="kategori"></select>
+    <input id="kategoriYazi" class="gizli" list="kategoriOnerileri" autocomplete="off" placeholder="Kategori (isteğe bağlı)">
+  </div>
+
+  <div class="iki">
+    <div>
+      <label for="tarih">Tarih</label>
+      <input id="tarih" type="date">
+    </div>
+    <div>
+      <label for="aciklama">Açıklama</label>
+      <input id="aciklama" autocomplete="off" placeholder="isteğe bağlı">
+    </div>
+  </div>
+
+  <button class="kaydet" id="kaydet">Kaydet</button>
+</div>
+
+<datalist id="hesapOnerileri"></datalist>
+<datalist id="kategoriOnerileri"></datalist>
+
+<h2 id="bekleyenBaslik" class="gizli">Gönderilmeyi bekleyenler
+  <button class="ikincil ek" id="simdiGonder">Şimdi gönder</button></h2>
+<div id="bekleyenListe" class="liste"></div>
+
+<details id="gecmisKutu">
+  <summary>Son gönderilenler</summary>
+  <div id="gecmisListe" class="liste"></div>
+</details>
+
+<div id="bildirim"></div>
+
+<!-- ── Ayarlar ─────────────────────────────────────────────────────────── -->
+<div id="ayarlar" class="gizli">
+  <header>
+    <h1>Ayarlar</h1>
+    <button class="simge-btn" id="ayarKapat" aria-label="Kapat">✕</button>
+  </header>
+  <div class="kart">
+    <label for="ayarUrl">Google betiği adresi (…/exec)</label>
+    <input id="ayarUrl" autocomplete="off" autocapitalize="off" spellcheck="false"
+           placeholder="https://script.google.com/macros/s/…/exec">
+    <label for="ayarAnahtar">Anahtar</label>
+    <input id="ayarAnahtar" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <label for="ayarCihaz">Bu cihazın adı</label>
+    <input id="ayarCihaz" autocomplete="off" placeholder="ör. Murat iPhone">
+    <div class="yan-yana">
+      <button class="ikincil" id="anahtarGoster">Anahtarı göster</button>
+      <button class="kaydet" id="ayarKaydet" style="margin-top:0;flex:2">Kaydet ve test et</button>
+    </div>
+    <div id="ayarDurum" class="durum-satiri"></div>
+    <p class="not">Adresi ve anahtarı yazmak yerine kopyala-yapıştır kullan. Anahtar yalnız bu telefonda saklanır.</p>
+  </div>
+
+  <h2>Hesap ve kategori listeleri</h2>
+  <div class="kart">
+    <div id="listeDurum" class="not" style="margin-top:0"></div>
+    <div class="yan-yana"><button class="ikincil" id="listeYenile">Listeleri yenile</button></div>
+  </div>
+  <p class="not">Sürüm 1 · 04.10.2026</p>
+</div>
+
+<script src="cekirdek.js"></script>
+<script>
+(function () {
+  'use strict';
+  const depo = window.localStorage;
+  const $ = function (id) { return document.getElementById(id); };
+  let tur = 'gider';
+
+  // ── Yardımcılar ──────────────────────────────────────────────────────────
+  let bildirimZaman = null;
+  function bildir(metin, tip) {
+    const b = $('bildirim');
+    b.textContent = metin;
+    b.className = 'goster ' + (tip || '');
+    clearTimeout(bildirimZaman);
+    bildirimZaman = setTimeout(function () { b.className = ''; }, 3200);
+  }
+  function el(etiket, sinif, metin) {
+    const e = document.createElement(etiket);
+    if (sinif) e.className = sinif;
+    if (metin != null) e.textContent = metin;
+    return e;
+  }
+  const TUR_AD = { gider: 'Gider', gelir: 'Gelir', transfer: 'Transfer' };
+
+  // ── Seçim kutuları (BÜTÇEM listesi varsa liste, yoksa elle yazma) ────────
+  function secenekleriDoldur(select, degerler, bosMetin) {
+    select.innerHTML = '';
+    const bos = el('option', null, bosMetin);
+    bos.value = '';
+    select.appendChild(bos);
+    degerler.forEach(function (d) {
+      const o = el('option', null, d);
+      o.value = d;
+      select.appendChild(o);
+    });
+  }
+  function onerileriDoldur(datalist, degerler) {
+    datalist.innerHTML = '';
+    degerler.forEach(function (d) { const o = el('option'); o.value = d; datalist.appendChild(o); });
+  }
+  function kullanilanlar(alan) {
+    const set = new Set();
+    BT.kuyruk(depo).concat(BT.gecmis(depo)).forEach(function (k) {
+      if (alan === 'hesap') { if (k.hesap) set.add(k.hesap); if (k.hedef_hesap) set.add(k.hedef_hesap); }
+      else if (k[alan]) set.add(k[alan]);
+    });
+    return Array.from(set).sort(function (a, b) { return a.localeCompare(b, 'tr'); });
+  }
+  function listeleriUygula() {
+    const l = BT.listeler(depo);
+    const hesapVar = !!(l && l.hesaplar && l.hesaplar.length);
+    const katVar = !!(l && l.kategoriler && l.kategoriler.length);
+    $('hesap').classList.toggle('gizli', !hesapVar);
+    $('hesapYazi').classList.toggle('gizli', hesapVar);
+    $('hedef').classList.toggle('gizli', !hesapVar);
+    $('hedefYazi').classList.toggle('gizli', hesapVar);
+    $('kategori').classList.toggle('gizli', !katVar);
+    $('kategoriYazi').classList.toggle('gizli', katVar);
+    if (hesapVar) {
+      secenekleriDoldur($('hesap'), l.hesaplar, 'Seç…');
+      secenekleriDoldur($('hedef'), l.hesaplar, 'Seç…');
+    }
+    if (katVar) secenekleriDoldur($('kategori'), l.kategoriler, '— kategori yok —');
+    onerileriDoldur($('hesapOnerileri'), kullanilanlar('hesap'));
+    onerileriDoldur($('kategoriOnerileri'), kullanilanlar('kategori'));
+    $('listeDurum').textContent = l
+      ? (l.hesaplar || []).length + ' hesap, ' + (l.kategoriler || []).length + ' kategori'
+        + (l.guncelleme ? ' — BÜTÇEM güncellemesi: ' + l.guncelleme : '')
+      : 'BÜTÇEM henüz liste göndermedi. O zamana kadar hesap ve kategoriyi elle yazabilirsin; '
+        + 'BÜTÇEM\'deki adlarla aynı yazmaya dikkat et.';
+  }
+  function deger(secimId, yaziId) {
+    return $(secimId).classList.contains('gizli') ? $(yaziId).value : $(secimId).value;
+  }
+  function degerAta(secimId, yaziId, v) {
+    if (!v) return;
+    if ($(secimId).classList.contains('gizli')) { $(yaziId).value = v; return; }
+    const var_ = Array.prototype.some.call($(secimId).options, function (o) { return o.value === v; });
+    if (var_) $(secimId).value = v;
+  }
+
+  // ── Tür sekmeleri ────────────────────────────────────────────────────────
+  function turSec(yeni) {
+    tur = yeni;
+    document.querySelectorAll('.sekmeler button').forEach(function (b) {
+      b.classList.toggle('secili', b.dataset.tur === tur);
+    });
+    $('hesapEtiket').textContent = tur === 'gelir' ? 'Hangi hesaba' : tur === 'transfer' ? 'Nereden' : 'Hangi hesaptan';
+    $('hedefAlan').classList.toggle('gizli', tur !== 'transfer');
+    $('kategoriAlan').classList.toggle('gizli', tur !== 'gider');
+    const son = BT.sonSecim(depo, tur);
+    degerAta('hesap', 'hesapYazi', son.hesap);
+    degerAta('hedef', 'hedefYazi', son.hedef_hesap);
+    $('kaydet').textContent = TUR_AD[tur] + ' kaydet';
+  }
+  document.querySelectorAll('.sekmeler button').forEach(function (b) {
+    b.addEventListener('click', function () { turSec(b.dataset.tur); });
+  });
+
+  // ── Tutar önizleme ───────────────────────────────────────────────────────
+  $('tutar').addEventListener('input', function () {
+    const v = $('tutar').value.trim();
+    const n = BT.tutarCoz(v);
+    const o = $('tutarOnizleme');
+    if (!v) { o.textContent = ''; o.className = 'tutar-onizleme'; return; }
+    if (isFinite(n) && n > 0) { o.textContent = '= ' + BT.tutarYaz(n); o.className = 'tutar-onizleme'; }
+    else { o.textContent = 'Tutar anlaşılamadı'; o.className = 'tutar-onizleme hatali'; }
+  });
+
+  // ── Kaydet ───────────────────────────────────────────────────────────────
+  $('kaydet').addEventListener('click', function () {
+    const s = BT.kayitOlustur({
+      tur: tur,
+      tutar: $('tutar').value,
+      tarihIso: $('tarih').value,
+      hesap: deger('hesap', 'hesapYazi'),
+      hedef_hesap: deger('hedef', 'hedefYazi'),
+      kategori: deger('kategori', 'kategoriYazi'),
+      aciklama: $('aciklama').value
+    }, BT.ayar(depo).cihaz);
+    if (s.hata) { bildir(s.hata, 'kotu'); return; }
+    BT.kuyrugaEkle(depo, s.kayit);
+    $('tutar').value = ''; $('aciklama').value = ''; $('tutarOnizleme').textContent = '';
+    $('kategori').value = ''; $('kategoriYazi').value = '';
+    $('tarih').value = BT.bugunIso();
+    bildir('Kaydedildi: ' + TUR_AD[s.kayit.tur] + ' ' + BT.tutarYaz(s.kayit.tutar), 'iyi');
+    ciz();
+    gonderVeGoster(true);
+  });
+
+  // ── Listeler: bekleyenler + geçmiş ──────────────────────────────────────
+  function satir(k, bekleyen) {
+    const d = el('div', 'satir' + (k.hata ? ' hatali' : ''));
+    const bilgi = el('div', 'bilgi');
+    const ust = el('div', 'ust');
+    ust.appendChild(el('span', 't-' + k.tur, TUR_AD[k.tur]));
+    ust.appendChild(el('span', null, BT.tutarYaz(k.tutar)));
+    bilgi.appendChild(ust);
+    const yol = k.tur === 'transfer' ? k.hesap + ' → ' + k.hedef_hesap : k.hesap;
+    bilgi.appendChild(el('div', 'alt', k.tarih + ' · ' + yol
+      + (k.kategori ? ' · ' + k.kategori : '') + (k.aciklama ? ' · ' + k.aciklama : '')));
+    if (k.hata) bilgi.appendChild(el('div', 'hata', 'Reddedildi: ' + k.hata));
+    d.appendChild(bilgi);
+    if (bekleyen) {
+      if (k.hata) {
+        const tekrar = el('button', 'sil', 'Tekrar');
+        tekrar.addEventListener('click', function () { BT.hatayiTemizle(depo, k.id); ciz(); gonderVeGoster(false); });
+        d.appendChild(tekrar);
+      }
+      const sil = el('button', 'sil', 'Sil');
+      sil.addEventListener('click', function () {
+        if (confirm('Bu kayıt silinsin mi? Henüz gönderilmedi; silinirse BÜTÇEM\'e hiç gitmez.')) {
+          BT.kuyruktanSil(depo, k.id); ciz();
+        }
+      });
+      d.appendChild(sil);
+    }
+    return d;
+  }
+  function ciz() {
+    const q = BT.kuyruk(depo);
+    const bl = $('bekleyenListe');
+    bl.innerHTML = '';
+    q.slice().reverse().forEach(function (k) { bl.appendChild(satir(k, true)); });
+    $('bekleyenBaslik').classList.toggle('gizli', q.length === 0);
+    const rb = $('rozetBekleyen');
+    rb.textContent = q.length + ' bekliyor';
+    rb.classList.toggle('gizli', q.length === 0);
+
+    const g = BT.gecmis(depo);
+    const gl = $('gecmisListe');
+    gl.innerHTML = '';
+    if (!g.length) gl.appendChild(el('div', 'bos', 'Henüz gönderilen kayıt yok.'));
+    g.forEach(function (k) { gl.appendChild(satir(k, false)); });
+
+    const rozet = $('rozetBaglanti');
+    const cevrimici = navigator.onLine;
+    rozet.textContent = cevrimici ? 'Çevrimiçi' : 'Çevrimdışı';
+    rozet.className = 'rozet ' + (cevrimici ? 'cevrimici' : 'cevrimdisi');
+  }
+
+  // ── Gönderme ─────────────────────────────────────────────────────────────
+  async function gonderVeGoster(sessiz) {
+    const r = await BT.gonder(depo, window.fetch.bind(window));
+    ciz();
+    if (r.durum === 'tamam') {
+      if (r.gonderilen) bildir(r.gonderilen + ' kayıt gönderildi ✓', 'iyi');
+      if (r.reddedilen) bildir(r.reddedilen + ' kayıt reddedildi, listeye bak', 'kotu');
+    } else if (r.durum === 'ayar_yok') {
+      if (!sessiz) bildir('Önce ⚙︎ Ayarlar\'dan adres ve anahtarı gir', 'kotu');
+    } else if (r.durum === 'baglanti_yok') {
+      if (!sessiz) bildir('İnternet yok — kayıtlar telefonda bekliyor', 'kotu');
+    } else if (r.durum === 'sunucu_hata') {
+      bildir('Gönderilemedi: ' + r.hata, 'kotu');
+    }
+    return r;
+  }
+  $('simdiGonder').addEventListener('click', function () { gonderVeGoster(false); });
+  window.addEventListener('online', function () { ciz(); gonderVeGoster(true); });
+  window.addEventListener('offline', ciz);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      $('tarih').value = $('tarih').value || BT.bugunIso();
+      ciz(); gonderVeGoster(true);
+    }
+  });
+  setInterval(function () { if (BT.kuyruk(depo).length) gonderVeGoster(true); }, 60000);
+
+  // ── Ayarlar ──────────────────────────────────────────────────────────────
+  function ayarAc() {
+    const a = BT.ayar(depo);
+    $('ayarUrl').value = a.url || '';
+    $('ayarAnahtar').value = a.anahtar || '';
+    $('ayarCihaz').value = a.cihaz || '';
+    $('ayarDurum').textContent = '';
+    $('ayarlar').classList.remove('gizli');
+  }
+  $('ayarAc').addEventListener('click', ayarAc);
+  $('ayarKapat').addEventListener('click', function () { $('ayarlar').classList.add('gizli'); });
+  $('anahtarGoster').addEventListener('click', function () {
+    const g = $('ayarAnahtar').type === 'password';
+    $('ayarAnahtar').type = g ? 'text' : 'password';
+    $('anahtarGoster').textContent = g ? 'Anahtarı gizle' : 'Anahtarı göster';
+  });
+  $('ayarKaydet').addEventListener('click', async function () {
+    const a = { url: $('ayarUrl').value, anahtar: $('ayarAnahtar').value, cihaz: $('ayarCihaz').value };
+    BT.ayarYaz(depo, a);
+    const d = $('ayarDurum');
+    d.className = 'durum-satiri'; d.textContent = 'Deneniyor…';
+    const r = await BT.baglantiTesti(BT.ayar(depo), window.fetch.bind(window));
+    if (r.ok) {
+      d.className = 'durum-satiri iyi';
+      d.textContent = '✓ Bağlantı tamam. Tabloda ' + r.kayit_sayisi + ' kayıt var.';
+      await BT.listeleriAl(depo, window.fetch.bind(window));
+      listeleriUygula(); turSec(tur);
+      gonderVeGoster(true);
+    } else {
+      d.className = 'durum-satiri kotu';
+      d.textContent = '✕ ' + (r.hata || 'Bağlantı kurulamadı');
+    }
+  });
+  $('listeYenile').addEventListener('click', async function () {
+    const r = await BT.listeleriAl(depo, window.fetch.bind(window));
+    listeleriUygula(); turSec(tur);
+    bildir(r.durum === 'tamam' ? (r.var ? 'Listeler güncellendi' : 'BÜTÇEM henüz liste göndermedi')
+         : r.durum === 'ayar_yok' ? 'Önce adres ve anahtarı kaydet' : 'Listeler alınamadı (internet?)',
+           r.durum === 'tamam' ? 'iyi' : 'kotu');
+  });
+
+  // ── Başlangıç ────────────────────────────────────────────────────────────
+  $('tarih').value = BT.bugunIso();
+  listeleriUygula();
+  turSec('gider');
+  ciz();
+  if (!BT.ayar(depo).url) ayarAc();
+  else {
+    gonderVeGoster(true);
+    BT.listeleriAl(depo, window.fetch.bind(window)).then(function () { listeleriUygula(); turSec(tur); });
+  }
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+})();
+</script>
+</body>
+</html>
